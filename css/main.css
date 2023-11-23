@@ -1,0 +1,13 @@
+body {
+  background-color: black;
+  display: flex;
+  align-items: center;
+  height: 100vh;
+}
+
+#stage {
+  width:1024px;
+  height: 780px;
+  background-color: white;
+  margin:auto;
+}
