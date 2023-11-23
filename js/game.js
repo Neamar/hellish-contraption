@@ -7,27 +7,38 @@ if (!context) {
 
 let itemId = 0;
 
-const STATE_SELECTING = 'selecting';
-const STATE_OPERATOR = 'operator';
-const STATE_OUTPUT = 'output';
+const STATE_SELECTING_NODE = 'selecting';
+const STATE_ADD_OPERATOR = 'operator';
+const STATE_ADD_OPERATOR_OUTPUT = 'output';
 
 class GameNode {
+  static colors = {
+    default: 'white',
+    hovered: '#ccc',
+    selected: "#888"
+  }
   id;
   value;
+  defaultValue;
   endNodeValue;
   x;
   y;
   radius;
   state;
 
-  constructor({ id = undefined, value = 0, x, y, endNodeValue = 0 }) {
+  constructor({ id = undefined, defaultValue = 0, x, y, isEndNode = false }) {
     this.id = id || itemId++;
-    this.value = value;
-    this.endNodeValue = endNodeValue;
+    this.value = defaultValue;
+    this.defaultValue = defaultValue;
+    this.isEndNode = isEndNode;
     this.x = x;
     this.y = y;
     this.radius = 40;
     this.state = 'default';
+  }
+
+  distanceTo(x, y) {
+    return Math.sqrt(Math.pow(x - this.x, 2) + Math.pow(y - this.y, 2));
   }
 }
 
@@ -38,6 +49,10 @@ class GameOperator {
   radius;
   operator;
   inputNodes;
+  /**
+   * @type {GameNode?}
+   */
+  outputNode;
 
   constructor({ x, y, operator = '+', inputNodes }) {
     this.id = itemId++;
@@ -50,13 +65,13 @@ class GameOperator {
 }
 
 const state = {
-  state: STATE_SELECTING,
+  state: STATE_SELECTING_NODE,
   nodes: [
-    new GameNode({ value: 1, x: 100, y: 200 }),
-    new GameNode({ value: 1, x: 100, y: 500 }),
+    new GameNode({ defaultValue: 1, x: 100, y: 200 }),
+    new GameNode({ defaultValue: 1, x: 100, y: 500 }),
     new GameNode({ x: 500, y: 200 }),
     new GameNode({ x: 500, y: 500 }),
-    new GameNode({ x: 900, y: 350 }),
+    new GameNode({ defaultValue: 5, x: 900, y: 350, isEndNode: true }),
   ],
   /**
    * @type {GameOperator[]}
@@ -65,14 +80,8 @@ const state = {
   /**
    * @type {GameOperator?}
    */
-  currentSelection: null,
+  currentOperator: null,
 };
-
-const colors = {
-  default: 'white',
-  hovered: '#ccc',
-  selected: "#888"
-}
 
 
 const renderFrame = (time) => {
@@ -88,13 +97,22 @@ const renderFrame = (time) => {
       context.lineTo(operator.x, operator.y);
       context.stroke();
     }
+    if (operator.outputNode) {
+      context.beginPath();
+      context.lineWidth = 2;
+      context.strokeStyle = state.currentOperator === operator ? '#c00' : '#ccc';
+      context.setLineDash([15, 5]);
+      context.moveTo(operator.outputNode.x, operator.outputNode.y);
+      context.lineTo(operator.x, operator.y);
+      context.stroke();
+    }
   }
   context.setLineDash([]);
 
   for (const node of state.nodes) {
     context.beginPath();
     context.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
-    context.fillStyle = colors[node.state];
+    context.fillStyle = GameNode.colors[node.state];
     context.fill();
     context.lineWidth = 3;
     context.strokeStyle = 'black';
@@ -123,16 +141,28 @@ const renderFrame = (time) => {
     context.fillText(operator.operator, operator.x, operator.y);
   }
 
+  context.fillStyle = 'black'
+  context.textAlign = "left";
+  context.textBaseline = "top";
+  context.font = "10px serif";
+  context.fillText(state.state, 0, 0);
+
   requestAnimationFrame(renderFrame);
 }
 
 renderFrame();
 
 
-const findHoveredItem = (mouseX, mouseY) => state.nodes.find((node) => Math.sqrt(Math.pow(mouseX - node.x, 2) + Math.pow(mouseY - node.y, 2)) < node.radius);
+const findHoveredItem = (mouseX, mouseY) => state.nodes.find((node) => node.distanceTo(mouseX, mouseY) < node.radius);
+const findClosestNode = (mouseX, mouseY, exclude = new Set()) => state.nodes.reduce((closest, node) => {
+  if (exclude.has(node)) {
+    return closest;
+  }
+  return node.distanceTo(mouseX, mouseY) < closest.distanceTo(mouseX, mouseY) ? node : closest
+}, new GameNode({ x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER }));
 
 canvas.addEventListener("mousemove", (e) => {
-  if (state.state === STATE_SELECTING) {
+  if (state.state === STATE_SELECTING_NODE) {
     const hovered = findHoveredItem(e.offsetX, e.offsetY)
     for (const node of state.nodes) {
       if (node === hovered && node.state === "default") {
@@ -143,17 +173,17 @@ canvas.addEventListener("mousemove", (e) => {
       }
     }
   }
-  else if (state.state === STATE_OPERATOR && state.currentSelection) {
-    state.currentSelection.x = e.offsetX;
-    state.currentSelection.y = e.offsetY;
+  else if (state.state === STATE_ADD_OPERATOR && state.currentOperator) {
+    state.currentOperator.x = e.offsetX;
+    state.currentOperator.y = e.offsetY;
   }
-  else if (state.state === STATE_OUTPUT) {
-
+  else if (state.state === STATE_ADD_OPERATOR_OUTPUT && state.currentOperator) {
+    state.currentOperator.outputNode = findClosestNode(e.offsetX, e.offsetY, new Set(state.currentOperator.inputNodes));
   }
 })
 
 canvas.addEventListener("click", (e) => {
-  if (state.state === STATE_SELECTING) {
+  if (state.state === STATE_SELECTING_NODE) {
     const hovered = findHoveredItem(e.offsetX, e.offsetY);
     if (hovered) {
       hovered.state = hovered.state !== 'selected' ? 'selected' : 'hovered'
@@ -161,25 +191,31 @@ canvas.addEventListener("click", (e) => {
 
     const selected = state.nodes.filter((node) => node.state === 'selected');
     if (selected.length === 2) {
-      state.state = STATE_OPERATOR;
-      state.currentSelection = new GameOperator({
+      state.state = STATE_ADD_OPERATOR;
+      state.currentOperator = new GameOperator({
         x: e.offsetX,
         y: e.offsetY,
         operator: '+',
         inputNodes: selected,
       });
-      state.operators.push(state.currentSelection)
+      state.operators.push(state.currentOperator)
     }
   }
-  else if (state.state === STATE_OPERATOR) {
-    state.state = STATE_OUTPUT;
+  else if (state.state === STATE_ADD_OPERATOR) {
+    state.state = STATE_ADD_OPERATOR_OUTPUT;
+  }
+  else if (state.state === STATE_ADD_OPERATOR_OUTPUT) {
+    state.currentOperator = null;
+    state.state = STATE_SELECTING_NODE;
+    const hovered = findHoveredItem(e.offsetX, e.offsetY)
+    state.nodes.forEach((node) => node.state = hovered === node ? 'hovered' : 'default');
   }
 });
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  if (state.state === STATE_OPERATOR) {
-    state.state = STATE_SELECTING;
+  if (state.state === STATE_ADD_OPERATOR) {
+    state.state = STATE_SELECTING_NODE;
     const hovered = findHoveredItem(e.offsetX, e.offsetY)
     state.nodes.forEach((node) => node.state = hovered === node ? 'hovered' : 'default');
     state.operators.pop();
