@@ -27,6 +27,10 @@ export class GameNode {
   y;
   radius;
   state;
+  /**
+   * @type {GameOperator[]}
+   */
+  operators = [];
 
   constructor({ id = undefined, defaultValue = 0, x, y, isEndNode = false }) {
     this.id = id || itemId++;
@@ -46,6 +50,13 @@ export class GameNode {
   fillColor() {
     return GameNode.colors[this.state];
   }
+
+  activeOperator(frameCount) {
+    if (this.operators.length === 0) {
+      return null;
+    }
+    return this.operators[frameCount % this.operators.length];
+  }
 }
 
 export class GameOperator {
@@ -54,6 +65,9 @@ export class GameOperator {
   y;
   radius;
   operator;
+  /**
+   * @type {GameNode[]}
+   */
   inputNodes;
   /**
    * @type {GameNode?}
@@ -67,6 +81,10 @@ export class GameOperator {
     this.radius = 20;
     this.operator = operator;
     this.inputNodes = inputNodes
+  }
+
+  isActive(frameCount) {
+    return this.inputNodes.every((node) => node.activeOperator(frameCount) === this)
   }
 }
 
@@ -89,4 +107,5 @@ export const state = {
    * @type {GameOperator?}
    */
   currentOperator: null,
+
 };

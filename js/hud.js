@@ -8,13 +8,13 @@ const HUD_STATE_DEFAULT = 'default';
 const HUD_STATE_PLAY_HOVERED = 'hovered';
 let hudState = HUD_STATE_DEFAULT;
 
-export const renderHud = () => {
+export const renderHud = (frameType) => {
   context.beginPath();
   context.fillStyle = 'black'
   context.textAlign = "right";
   context.textBaseline = "bottom";
   context.font = "10px serif";
-  context.fillText(state.state, canvas.width - 4, canvas.height - 4);
+  context.fillText(state.state === STATE_PLAYING ? `${state.state} / ${frameType}` : state.state, canvas.width - 4, canvas.height - 4);
 
   context.beginPath();
   context.lineWidth = 1;

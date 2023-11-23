@@ -62,10 +62,12 @@ canvas.addEventListener("click", (e) => {
     state.state = STATE_ADD_OPERATOR_OUTPUT;
   }
   else if (state.state === STATE_ADD_OPERATOR_OUTPUT) {
-    state.currentOperator = null;
-    state.state = STATE_SELECTING_NODE;
-    const hovered = findHoveredItem(e.offsetX, e.offsetY)
-    state.nodes.forEach((node) => node.state = hovered === node ? 'hovered' : 'default');
+    if (state.currentOperator) {
+      const currentOperator = state.currentOperator;
+      currentOperator.inputNodes.forEach((node) => node.operators.push(currentOperator))
+      state.currentOperator = null;
+    }
+    resetGameState();
   }
 });
 
