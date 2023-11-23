@@ -7,34 +7,65 @@ if (!context) {
 
 let itemId = 0;
 
-const makeNode = ({ id = undefined, value = 0, x, y, endNodeValue = 0 }) => {
-  return {
-    type: 'node',
-    id: id || itemId++,
-    value: value,
-    endNodeValue,
-    x,
-    y,
-    radius: 40,
-    state: 'default',
-  }
-}
-
 const STATE_SELECTING = 'selecting';
 const STATE_OPERATOR = 'operator';
 const STATE_OUTPUT = 'output';
 
+class GameNode {
+  id;
+  value;
+  endNodeValue;
+  x;
+  y;
+  radius;
+  state;
+
+  constructor({ id = undefined, value = 0, x, y, endNodeValue = 0 }) {
+    this.id = id || itemId++;
+    this.value = value;
+    this.endNodeValue = endNodeValue;
+    this.x = x;
+    this.y = y;
+    this.radius = 40;
+    this.state = 'default';
+  }
+}
+
+class GameOperator {
+  id;
+  x;
+  y;
+  radius;
+  operator;
+  inputNodes;
+
+  constructor({ x, y, operator = '+', inputNodes }) {
+    this.id = itemId++;
+    this.x = x;
+    this.y = y;
+    this.radius = 20;
+    this.operator = operator;
+    this.inputNodes = inputNodes
+  }
+}
+
 const state = {
   state: STATE_SELECTING,
   nodes: [
-    makeNode({ value: 1, x: 100, y: 200 }),
-    makeNode({ value: 1, x: 100, y: 500 }),
-    makeNode({ x: 500, y: 200 }),
-    makeNode({ x: 500, y: 500 }),
-    makeNode({ x: 900, y: 350 }),
+    new GameNode({ value: 1, x: 100, y: 200 }),
+    new GameNode({ value: 1, x: 100, y: 500 }),
+    new GameNode({ x: 500, y: 200 }),
+    new GameNode({ x: 500, y: 500 }),
+    new GameNode({ x: 900, y: 350 }),
   ],
-  operators: Array(),
-  currentSelection: {},
+  /**
+   * @type {GameOperator[]}
+   */
+  operators: [],
+  /**
+   * @type {GameOperator?}
+   */
+  currentSelection: null,
 };
 
 const colors = {
@@ -48,7 +79,7 @@ const renderFrame = (time) => {
   context.clearRect(0, 0, 1024, 780);
 
   for (const operator of state.operators) {
-    for (const node of operator.nodes) {
+    for (const node of operator.inputNodes) {
       context.beginPath();
       context.lineWidth = 2;
       context.strokeStyle = '#ccc';
@@ -112,7 +143,7 @@ canvas.addEventListener("mousemove", (e) => {
       }
     }
   }
-  else if (state.state === STATE_OPERATOR) {
+  else if (state.state === STATE_OPERATOR && state.currentSelection) {
     state.currentSelection.x = e.offsetX;
     state.currentSelection.y = e.offsetY;
   }
@@ -131,14 +162,12 @@ canvas.addEventListener("click", (e) => {
     const selected = state.nodes.filter((node) => node.state === 'selected');
     if (selected.length === 2) {
       state.state = STATE_OPERATOR;
-      state.currentSelection = {
-        id: itemId++,
+      state.currentSelection = new GameOperator({
         x: e.offsetX,
         y: e.offsetY,
-        radius: 20,
         operator: '+',
-        nodes: selected,
-      };
+        inputNodes: selected,
+      });
       state.operators.push(state.currentSelection)
     }
   }
