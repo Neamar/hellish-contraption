@@ -1,7 +1,7 @@
 import { STATE_PLAYING, context, state } from './game.js';
 import { renderHud } from './hud.js';
 
-const FRAME_DURATION = 1000;
+const FRAME_DURATION = 2000;
 
 
 /**
@@ -11,6 +11,7 @@ const FRAME_DURATION = 1000;
 const renderFrame = (time) => {
   context.clearRect(0, 0, 1024, 780);
   let frameType = 'paused';
+  let frameTypePercentage = 0;
   if (state.state === STATE_PLAYING) {
     let frameLength = Number(time) - Number(state.frameStartedAt);
     if (frameLength > FRAME_DURATION) {
@@ -18,11 +19,14 @@ const renderFrame = (time) => {
       state.frameStartedAt = time;
       state.frameCount++;
     }
+
     if (frameLength < FRAME_DURATION / 2) {
       frameType = 'collecting'
+      frameTypePercentage = frameLength / (FRAME_DURATION / 2)
     }
     else {
       frameType = 'outputting'
+      frameTypePercentage = (frameLength - FRAME_DURATION / 2) / (FRAME_DURATION / 2)
     }
   }
 
@@ -32,11 +36,22 @@ const renderFrame = (time) => {
 
       context.beginPath();
       context.lineWidth = 2;
-      context.strokeStyle = frameType === 'collecting' && node.activeOperator(state.frameCount) === operator ? '#00c' : '#ccc';
+      context.strokeStyle = '#ccc';
       context.setLineDash([5, 15]);
       context.moveTo(node.x, node.y);
       context.lineTo(operator.x, operator.y);
       context.stroke();
+
+      if (node.activeOperator(state.frameCount) === operator && state.state === STATE_PLAYING) {
+        context.beginPath();
+        context.lineWidth = 2;
+        context.strokeStyle = '#00c';
+        context.setLineDash([]);
+        context.moveTo(node.x, node.y);
+        const progession = frameType === 'outputting' ? 1 : frameTypePercentage;
+        context.lineTo(node.x + (operator.x - node.x) * progession, node.y + (operator.y - node.y) * progession);
+        context.stroke();
+      }
 
       if (index !== -1) {
         const numbers = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -55,13 +70,21 @@ const renderFrame = (time) => {
       if (state.currentOperator === operator) {
         context.strokeStyle = '#c00';
       }
-      else if (operator.isActive(state.frameCount) && frameType == 'outputting') {
-        context.strokeStyle = '#00c';
-      }
+
       context.setLineDash([15, 5]);
       context.moveTo(operator.outputNode.x, operator.outputNode.y);
       context.lineTo(operator.x, operator.y);
       context.stroke();
+
+      if (operator.isActive(state.frameCount) && frameType == 'outputting') {
+        context.beginPath();
+        context.lineWidth = 2;
+        context.strokeStyle = '#00c';
+        context.setLineDash([]);
+        context.moveTo(operator.x, operator.y);
+        context.lineTo(operator.x + (operator.outputNode.x - operator.x) * frameTypePercentage, operator.y + (operator.outputNode.y - operator.y) * frameTypePercentage);
+        context.stroke();
+      }
     }
   }
   context.setLineDash([]);
