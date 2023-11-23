@@ -12,6 +12,7 @@ export const STATE_SELECTING_NODE = 'selecting';
 export const STATE_ADD_OPERATOR = 'operator';
 export const STATE_ADD_OPERATOR_OUTPUT = 'output';
 export const STATE_PLAYING = 'playing';
+export const STATE_WON = 'won';
 
 export class GameNode {
   static colors = {
@@ -57,6 +58,10 @@ export class GameNode {
     }
     return this.operators[frameCount % this.operators.length];
   }
+
+  isWriteable(value) {
+    return (!this.isEndNode && this.defaultValue === 0) || (this.isEndNode && value == this.defaultValue);
+  }
 }
 
 export class GameOperator {
@@ -84,7 +89,12 @@ export class GameOperator {
   }
 
   isActive(frameCount) {
-    return this.inputNodes.every((node) => node.activeOperator(frameCount) === this)
+    return this.inputNodes.every((node) => node.activeOperator(frameCount) === this && node.value)
+  }
+
+  outputValue() {
+    const r = this.inputNodes[0].value + this.inputNodes[1].value;
+    return isNaN(r) ? 0 : r;
   }
 }
 

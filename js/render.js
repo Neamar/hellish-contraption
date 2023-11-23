@@ -1,4 +1,4 @@
-import { STATE_PLAYING, context, state } from './game.js';
+import { STATE_PLAYING, STATE_WON, context, state } from './game.js';
 import { renderHud } from './hud.js';
 
 const FRAME_DURATION = 2000;
@@ -15,6 +15,17 @@ const renderFrame = (time) => {
   if (state.state === STATE_PLAYING) {
     let frameLength = Number(time) - Number(state.frameStartedAt);
     if (frameLength > FRAME_DURATION) {
+      // Set node value after frame end
+      for (const operator of state.operators) {
+        const outputValue = operator.outputValue();
+        if (operator.isActive(state.frameCount) && operator.outputNode?.isWriteable(outputValue)) {
+          operator.outputNode.value = outputValue;
+          if (operator.outputNode.isEndNode && outputValue === operator.outputNode.defaultValue) {
+            state.state = STATE_WON;
+          }
+
+        }
+      }
       frameLength %= FRAME_DURATION;
       state.frameStartedAt = time;
       state.frameCount++;
@@ -30,6 +41,7 @@ const renderFrame = (time) => {
     }
   }
 
+  // Draw operator lines
   for (const operator of state.operators) {
     for (const node of operator.inputNodes) {
       const index = node.operators.indexOf(operator);
@@ -42,17 +54,7 @@ const renderFrame = (time) => {
       context.lineTo(operator.x, operator.y);
       context.stroke();
 
-      if (node.activeOperator(state.frameCount) === operator && state.state === STATE_PLAYING) {
-        context.beginPath();
-        context.lineWidth = 2;
-        context.strokeStyle = '#00c';
-        context.setLineDash([]);
-        context.moveTo(node.x, node.y);
-        const progession = frameType === 'outputting' ? 1 : frameTypePercentage;
-        context.lineTo(node.x + (operator.x - node.x) * progession, node.y + (operator.y - node.y) * progession);
-        context.stroke();
-      }
-
+      // add roman numeral
       if (index !== -1) {
         const numbers = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
         const middle = [(node.x - operator.x) / 2, (node.y - operator.y) / 2]
@@ -62,7 +64,20 @@ const renderFrame = (time) => {
         context.font = "12px serif";
         context.fillText(numbers[index], operator.x + middle[0], operator.y + middle[1] - 5);
       }
+
+      // Draw input lines in progress
+      if (node.activeOperator(state.frameCount) === operator && state.state === STATE_PLAYING && node.value) {
+        context.beginPath();
+        context.lineWidth = 2;
+        context.strokeStyle = '#00c';
+        context.setLineDash([]);
+        context.moveTo(node.x, node.y);
+        const progession = frameType === 'outputting' ? 1 : frameTypePercentage;
+        context.lineTo(node.x + (operator.x - node.x) * progession, node.y + (operator.y - node.y) * progession);
+        context.stroke();
+      }
     }
+
     if (operator.outputNode) {
       context.beginPath();
       context.lineWidth = 2;
@@ -76,10 +91,11 @@ const renderFrame = (time) => {
       context.lineTo(operator.x, operator.y);
       context.stroke();
 
+      // draw output line in progress
       if (operator.isActive(state.frameCount) && frameType == 'outputting') {
         context.beginPath();
         context.lineWidth = 2;
-        context.strokeStyle = '#00c';
+        context.strokeStyle = operator.outputNode?.isWriteable(operator.outputValue()) ? '#00c' : '#c00';
         context.setLineDash([]);
         context.moveTo(operator.x, operator.y);
         context.lineTo(operator.x + (operator.outputNode.x - operator.x) * frameTypePercentage, operator.y + (operator.outputNode.y - operator.y) * frameTypePercentage);
@@ -89,6 +105,7 @@ const renderFrame = (time) => {
   }
   context.setLineDash([]);
 
+  // draw nodes
   for (const node of state.nodes) {
     context.beginPath();
     context.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
@@ -106,6 +123,7 @@ const renderFrame = (time) => {
     }
   }
 
+  // draw operator nodes
   for (const operator of state.operators) {
     context.beginPath();
     context.arc(operator.x, operator.y, operator.radius, 0, 2 * Math.PI);

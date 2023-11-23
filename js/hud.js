@@ -73,7 +73,11 @@ canvas.addEventListener("click", (e) => {
     return;
   }
   if (overPlayButton(e.offsetX, e.offsetY) && state.state === STATE_PLAYING) {
-    console.log("clicked")
     state.state = STATE_SELECTING_NODE;
+    state.nodes.forEach((node) => {
+      if (node.value !== node.defaultValue) {
+        node.value = 0
+      }
+    })
   }
 });
