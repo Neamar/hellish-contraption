@@ -11,6 +11,7 @@ let itemId = 0;
 export const STATE_SELECTING_NODE = 'selecting';
 export const STATE_ADD_OPERATOR = 'operator';
 export const STATE_ADD_OPERATOR_OUTPUT = 'output';
+export const STATE_PLAYING = 'playing';
 
 export class GameNode {
   static colors = {
@@ -71,6 +72,8 @@ export class GameOperator {
 
 export const state = {
   state: STATE_SELECTING_NODE,
+  frameStartedAt: document.timeline.currentTime,
+  frameCount: 0,
   nodes: [
     new GameNode({ defaultValue: 1, x: 100, y: 200 }),
     new GameNode({ defaultValue: 1, x: 100, y: 500 }),

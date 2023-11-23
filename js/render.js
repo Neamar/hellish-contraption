@@ -1,7 +1,25 @@
-import { context, state } from './game.js';
+import { STATE_PLAYING, context, state } from './game.js';
+import { renderHud } from './hud.js';
 
+const FRAME_DURATION = 1000;
+
+
+/**
+ *
+ * @param {CSSNumberish} time
+ */
 const renderFrame = (time) => {
   context.clearRect(0, 0, 1024, 780);
+  let frameType = 'paused';
+  if (state.state === STATE_PLAYING) {
+    const frameLength = Number(time) - Number(state.frameStartedAt);
+    if (frameLength < FRAME_DURATION / 2) {
+      frameType = 'collecting'
+    }
+    else {
+      frameType = 'outputting'
+    }
+  }
 
   for (const operator of state.operators) {
     for (const node of operator.inputNodes) {
@@ -57,13 +75,9 @@ const renderFrame = (time) => {
     context.fillText(operator.operator, operator.x, operator.y);
   }
 
-  context.fillStyle = 'black'
-  context.textAlign = "left";
-  context.textBaseline = "top";
-  context.font = "10px serif";
-  context.fillText(state.state, 0, 0);
 
+  renderHud();
   requestAnimationFrame(renderFrame);
 }
 
-renderFrame();
+renderFrame(0);

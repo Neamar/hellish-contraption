@@ -1,4 +1,5 @@
 import { GameNode, GameOperator, STATE_ADD_OPERATOR, STATE_ADD_OPERATOR_OUTPUT, STATE_SELECTING_NODE, canvas, state } from './game.js';
+import { HUD_Y } from './hud.js';
 
 const findHoveredItem = (mouseX, mouseY) => state.nodes.find((node) => node.distanceTo(mouseX, mouseY) < node.radius);
 const findClosestNode = (mouseX, mouseY, exclude = new Set()) => state.nodes.reduce((closest, node) => {
@@ -10,6 +11,10 @@ const findClosestNode = (mouseX, mouseY, exclude = new Set()) => state.nodes.red
 
 
 canvas.addEventListener("mousemove", (e) => {
+  if (e.offsetY >= HUD_Y) {
+    return;
+  }
+
   if (state.state === STATE_SELECTING_NODE) {
     const hovered = findHoveredItem(e.offsetX, e.offsetY)
     for (const node of state.nodes) {
@@ -31,6 +36,10 @@ canvas.addEventListener("mousemove", (e) => {
 })
 
 canvas.addEventListener("click", (e) => {
+  if (e.offsetY >= HUD_Y) {
+    return;
+  }
+
   if (state.state === STATE_SELECTING_NODE) {
     const hovered = findHoveredItem(e.offsetX, e.offsetY);
     if (hovered) {
@@ -62,10 +71,18 @@ canvas.addEventListener("click", (e) => {
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  if (state.state === STATE_ADD_OPERATOR) {
-    state.state = STATE_SELECTING_NODE;
-    const hovered = findHoveredItem(e.offsetX, e.offsetY)
-    state.nodes.forEach((node) => node.state = hovered === node ? 'hovered' : 'default');
-    state.operators.pop();
+  if (state.state === STATE_ADD_OPERATOR || state.state === STATE_ADD_OPERATOR_OUTPUT) {
+    resetGameState(e.offsetX, e.offsetY);
   }
 })
+
+
+export const resetGameState = (x, y) => {
+  state.state = STATE_SELECTING_NODE;
+  const hovered = findHoveredItem(x, y)
+  state.nodes.forEach((node) => node.state = hovered === node ? 'hovered' : 'default');
+  if (state.currentOperator) {
+    state.operators.pop();
+    state.currentOperator = null;
+  }
+}
